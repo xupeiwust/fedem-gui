@@ -207,8 +207,8 @@ bool FdPart::updateSpecialLines(double scale)
   myFEKit->deleteGroupParts(FdFEGroupPartSet::SPECIAL_LINES);
   myFEKit->updateVertexes(static_cast<FmPart*>(itsFmOwner)->getLinkHandler());
 
-  for (const FFlGroupPartCreator::GroupPartMap::value_type& gp : myGroupPartCreator->getSpecialLines())
-    myFEKit->addGroupPart(FdFEGroupPartSet::SPECIAL_LINES,gp.second);
+  for (FFlGroupPartCreator::GroupPartMap::value_type& gp : myGroupPartCreator->getSpecialLines())
+    myFEKit->addGroupPart(FdFEGroupPartSet::SPECIAL_LINES,&gp.second);
 
   return true;
 }

@@ -52,7 +52,11 @@
 namespace FapMemoryProfiler { bool usage(const char* task); }
 #endif
 
-#include <functional>
+#ifdef USE_INVENTOR
+namespace
+{
+  FdPart* getFd(FmPart* part) { return static_cast<FdPart*>(part->getFdPointer()); }
+}
 
 
 /*!
@@ -114,6 +118,7 @@ private:
 #ifdef FT_USE_MEMPOOL
 FFaMemPool FapEccTransform::ourMemPool = FFaMemPool(sizeof(FapEccTransform),
                                                     FFaOperationBase::getMemPoolMgr());
+#endif
 #endif
 
 
@@ -219,7 +224,8 @@ bool FapAnimationCreator::initReading(FmAnimation* animation)
 
   // Get all links that may have results, optionally skip all blade elements
   bool skipBlades = animation->getUserDescription().find("#skipBlade") != std::string::npos;
-  std::function<bool(FmLink*)> filterBlade = [skipBlades](FmLink* link) -> bool
+  // Lambda function checking if a link is result-less.
+  auto&& filterBlade = [skipBlades](FmLink* link)
   {
     if (link->isSuppressed())
       return true;
@@ -317,11 +323,9 @@ double FapAnimationCreator::initRDB(DoubleSet& timeSteps,
   // Check whether to stop reading at last solved timestep
   if (IAmSummaryAnimation)
     myStopTime = *(timeSteps.rbegin()); // always use whole time domain
-  else {
-    double newDataEndTime = myExtractor->getLastWrittenTime();
-    if (newDataEndTime < myStopTime && newDataEndTime != -HUGE_VAL)
-      myStopTime = newDataEndTime;
-  }
+  else if (double newEndTime = myExtractor->getLastWrittenTime();
+           newEndTime < myStopTime && newEndTime != -HUGE_VAL)
+    myStopTime = newEndTime;
 #ifdef FAP_DEBUG
   std::cout <<"\tUsing time window ["<< gottenTime <<","<< myStopTime <<"]"<< std::endl;
 #endif
@@ -888,7 +892,7 @@ void FapAnimationCreator::initDeformationReading(FmPart* part, FFrExtractor* ext
   feRes->deformationOps.resize(feData->getVertexCount(),(FFaOperation<FaVec3>*)NULL);
 
 #ifdef USE_INVENTOR
-  FdPart* fdpart = static_cast<FdPart*>(part->getFdPointer());
+  FdPart* fdpart = getFd(part);
   if (fdpart->updateSpecialLines(-1.0))
     fdpart->updateFdDetails(); // Hide local beam system marker during animation
 #endif
@@ -965,7 +969,7 @@ void FapAnimationCreator::initDeformationReading(FmPart* part, FFrExtractor* ext
 void FapAnimationCreator::readDeformations(int frameIdx, FmPart* part)
 {
 #ifdef USE_INVENTOR
-  FdFEModel* visMod = static_cast<FdLink*>(part->getFdPointer())->getVisualModel();
+  FdFEModel* visMod = getFd(part)->getVisualModel();
   if (!visMod) return;
 
   if (visMod->hasResultDeformation(frameIdx)) return;
@@ -1018,9 +1022,8 @@ bool FapAnimationCreator::readDeformations(FaVec3Vec& def, FmPart* part)
   FFlrFELinkResult* linkRes = lh->getResults();
   def.reserve(lh->getNodeCount(FFlLinkHandler::FFL_FEM));
 
-  FFaOperation<FaVec3>* readOp = NULL;
   for (NodesCIter nit = lh->nodesBegin(); nit != lh->nodesEnd(); ++nit)
-    if ((readOp = linkRes->deformationOps[(*nit)->getVertexID()]))
+    if (FFaOperation<FaVec3>* readOp = linkRes->deformationOps[(*nit)->getVertexID()]; readOp)
     {
       FaVec3 dval;
       if (readOp->hasData())
@@ -1061,7 +1064,9 @@ void FapAnimationCreator::finishDeformationReading(FmPart* part)
 //
 //////////////////////////////////
 
-typedef FFlGroupPartCreator::GroupPartMap::value_type FFlGroupPartItem;
+#ifdef USE_INVENTOR
+using FFlGroupPartItem = FFlGroupPartCreator::GroupPartMap::value_type;
+#endif
 
 /*!
   Initializes operations etc for an FE part, filling its group part data objects
@@ -1158,17 +1163,17 @@ int FapAnimationCreator::initFringeReading(FmPart* part,
   else
   {
 #ifdef USE_INVENTOR
-    FdPart* fdpart = static_cast<FdPart*>(part->getFdPointer());
-    if (IAmLoadingFringeData%2)
-      for (const FFlGroupPartItem& it : fdpart->getGroupPartCreator()->getLinkParts())
+    FFlGroupPartCreator* gpc = getFd(part)->getGroupPartCreator();
+    if (IAmLoadingFringeData%2 && gpc)
+      for (FFlGroupPartItem& it : *gpc)
         if (it.first == FFlGroupPartCreator::SURFACE_FACES)
-          nOperations += FFlrFringeCreator::buildColorXfs(*(it.second),lh,fringeSetup);
+          nOperations += FFlrFringeCreator::buildColorXfs(it.second,lh,fringeSetup);
 
-    if (IAmLoadingFringeData/2)
-      for (const FFlGroupPartItem& it : fdpart->getGroupPartCreator()->getLinkParts())
+    if (IAmLoadingFringeData/2 && gpc)
+      for (FFlGroupPartItem& it : *gpc)
         if (it.first == FFlGroupPartCreator::OUTLINE_LINES ||
             it.first == FFlGroupPartCreator::SURFACE_LINES)
-          nOperations += FFlrFringeCreator::buildColorXfs(*(it.second),lh,fringeSetup);
+          nOperations += FFlrFringeCreator::buildColorXfs(it.second,lh,fringeSetup);
 #endif
   }
 #ifdef FAP_DEBUG
@@ -1213,30 +1218,24 @@ int FapAnimationCreator::initFringeReading(FmPart* part,
 
 
 void FapAnimationCreator::readFringeData(int frameIdx, FmPart* part,
-                                         const FFaLegendMapper&
-#ifdef USE_INVENTOR
-                                         legendMapping
-#endif
-                                         )
+                                         const FFaLegendMapper& legendMapping)
 {
 #ifdef USE_INVENTOR
+  FFlGroupPartCreator* gpc = getFd(part)->getGroupPartCreator();
+  if (!gpc) return;
+
 #ifdef FT_USE_PROFILER
   myProfiler->startTimer("Fringe Read");
 #endif
 
-  FdFEGroupPart::lookPolicy look = IHaveOneColorPrFace ? FdFEGroupPart::PR_FACE : FdFEGroupPart::PR_FACE_VERTEX;
-
   // Lambda function for assigning color fringe values to an FE group part.
-  auto&& setResult = [this,look,&legendMapping](FFlGroupPartData* gpd, int fidx)
+  auto&& setResult = [this,&legendMapping](const FFlGroupPartData& gpd, int fidx)
   {
-    if (!gpd->visualModel)
-      return;
-
-    if (gpd->visualModel->hasResultLook(fidx))
+    if (!gpd.visualModel || gpd.visualModel->hasResultLook(fidx))
       return;
 
     DoubleVec colors;
-    if (!FFlrFringeCreator::getColorData(colors,*gpd,IHaveOneColorPrFace))
+    if (!FFlrFringeCreator::getColorData(colors,gpd,IHaveOneColorPrFace))
       return;
 
     for (double& color : colors)
@@ -1249,17 +1248,18 @@ void FapAnimationCreator::readFringeData(int frameIdx, FmPart* part,
         if (color < myMinFringeValue) myMinFringeValue = color;
       }
 
-    gpd->visualModel->setResultLook(fidx,look,colors,legendMapping);
+    gpd.visualModel->setResultLook(fidx,
+                                   IHaveOneColorPrFace ? FdFEGroupPart::PR_FACE : FdFEGroupPart::PR_FACE_VERTEX,
+                                   colors, legendMapping);
   };
 
-  FdPart* fdpart = static_cast<FdPart*>(part->getFdPointer());
   if (IAmLoadingFringeData%2)
-    for (const FFlGroupPartItem& it : fdpart->getGroupPartCreator()->getLinkParts())
+    for (const FFlGroupPartItem& it : *gpc)
       if (it.first == FFlGroupPartCreator::SURFACE_FACES)
         setResult(it.second,frameIdx);
 
   if (IAmLoadingFringeData/2)
-    for (const FFlGroupPartItem& it : fdpart->getGroupPartCreator()->getLinkParts())
+    for (const FFlGroupPartItem& it : *gpc)
       if (it.first == FFlGroupPartCreator::OUTLINE_LINES ||
           it.first == FFlGroupPartCreator::SURFACE_LINES)
         setResult(it.second,frameIdx);
@@ -1268,8 +1268,8 @@ void FapAnimationCreator::readFringeData(int frameIdx, FmPart* part,
   myProfiler->stopTimer("Fringe Read");
 #endif
 #else
-  std::cout <<"FapAnimationCreator::readFringeData("
-            << frameIdx <<","<< part->getBaseID()
+  std::cout <<"FapAnimationCreator::readFringeData("<< frameIdx
+            <<","<< part->getBaseID() <<","<< legendMapping.getMax()
             <<") does nothing."<< std::endl;
 #endif
 }
@@ -1287,9 +1287,8 @@ bool FapAnimationCreator::readFringeData(DoubleVec& values, FmPart* part)
   size_t nRes = linkRes->scalarOps.size();
 
   for (size_t i = 0; i < nRes; i++)
-  {
-    FFaOperation<double>* readOp = linkRes->scalarOps[i];
-    if (readOp && readOp->hasData())
+    if (FFaOperation<double>* readOp = linkRes->scalarOps[i];
+        readOp && readOp->hasData())
     {
       if (values.empty())
         values.resize(nRes,HUGE_VAL);
@@ -1297,7 +1296,6 @@ bool FapAnimationCreator::readFringeData(DoubleVec& values, FmPart* part)
       if (fabs(values[i] - mySpecialValue) < mySpecialValue/1.0e7)
 	values[i] = mySpValConvertValue;
     }
-  }
 
 #ifdef FT_USE_PROFILER
   myProfiler->stopTimer("Fringe Read");
@@ -1326,9 +1324,8 @@ bool FapAnimationCreator::readFringeData(std::vector<DoubleVec>& values, FmPart*
     int n = linkRes->elmStart[i+1] - k;
     values[i].resize(n);
     for (int j = 0; j < n; j++)
-    {
-      FFaOperation<double>* readOp = linkRes->scalarOps[k+j];
-      if (readOp && readOp->hasData())
+      if (FFaOperation<double>* readOp = linkRes->scalarOps[k+j];
+          readOp && readOp->hasData())
       {
 	gotData = true;
 	readOp->evaluate(values[i][j]);
@@ -1337,7 +1334,6 @@ bool FapAnimationCreator::readFringeData(std::vector<DoubleVec>& values, FmPart*
       }
       else
 	values[i][j] = HUGE_VAL;
-    }
   }
 
 #ifdef FT_USE_PROFILER
@@ -1364,17 +1360,17 @@ void FapAnimationCreator::finishFringeReading(FmPart* part)
   // Delete temporary data on the faces and edges
 
 #ifdef USE_INVENTOR
-  FdPart* fdpart = static_cast<FdPart*>(part->getFdPointer());
+  FFlGroupPartCreator* gpc = getFd(part)->getGroupPartCreator();
   if (IAmLoadingFringeData%2)
-    for (const FFlGroupPartItem& it : fdpart->getGroupPartCreator()->getLinkParts())
+    for (FFlGroupPartItem& it : *gpc)
       if (it.first == FFlGroupPartCreator::SURFACE_FACES)
-        FFlrFringeCreator::deleteColorsXfs(*it.second,memPoll);
+        FFlrFringeCreator::deleteColorsXfs(it.second,memPoll);
 
   if (IAmLoadingFringeData/2)
-    for (const FFlGroupPartItem& it : fdpart->getGroupPartCreator()->getLinkParts())
+    for (FFlGroupPartItem& it : *gpc)
       if (it.first == FFlGroupPartCreator::OUTLINE_LINES ||
           it.first == FFlGroupPartCreator::SURFACE_LINES)
-        FFlrFringeCreator::deleteColorsXfs(*it.second,memPoll);
+        FFlrFringeCreator::deleteColorsXfs(it.second,memPoll);
 #endif
 
 #ifdef FT_USE_PROFILER
@@ -1678,11 +1674,9 @@ bool FapAnimationCreator::exportToVTF(FmAnimation* animation,
     // Read and write FE part deformations
     if (IAmLoadingDeformData)
       for (i = 0; i < myParts.size() && status; i++)
-      {
-        FaVec3Vec dis;
-        if (FapAnimationCreator::readDeformations(dis,myParts[i]))
+        if (FaVec3Vec dis;
+            FapAnimationCreator::readDeformations(dis,myParts[i]))
           status = vtf.writeDeformations(myParts[i]->getBaseID(),dis);
-      }
 
     // Read and write fringe results
     if (IAmLoadingFringeData%2)
@@ -1691,16 +1685,16 @@ bool FapAnimationCreator::exportToVTF(FmAnimation* animation,
         if (iResMap == 2)
         {
           // Element-nodal results
-          std::vector<DoubleVec> values;
-          if (FapAnimationCreator::readFringeData(values,myParts[i]))
+          if (std::vector<DoubleVec> values;
+              FapAnimationCreator::readFringeData(values,myParts[i]))
             status = vtf.writeFringes(myParts[i]->getBaseID(),values,
                                       animation->getFringeQuantity());
         }
         else
         {
           // Element or nodal results
-          DoubleVec values;
-          if (FapAnimationCreator::readFringeData(values,myParts[i]))
+          if (DoubleVec values;
+              FapAnimationCreator::readFringeData(values,myParts[i]))
             status = vtf.writeFringes(myParts[i]->getBaseID(),values,
                                       animation->getFringeQuantity(),
                                       iResMap == 1);

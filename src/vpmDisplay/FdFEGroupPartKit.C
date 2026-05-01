@@ -143,7 +143,7 @@ FdFEGroupPartKit::~FdFEGroupPartKit()
   this->deleteResultFrame(-1);
 }
 
-void FdFEGroupPartKit::setSpecialGraphics(SoSeparator * scene, bool isLineShape = false)
+void FdFEGroupPartKit::setSpecialGraphics(SoSeparator* scene, bool isLineShape)
 {
   this->setPart("specialGraphics", scene);
   this->setLineOffsetOn(!isLineShape);
@@ -387,7 +387,7 @@ void FdFEGroupPartKit::remapLookResults(ResultsFrame* frame, const FFaLegendMapp
 
   SoPackedColor* pc = frame->getResColors();
 
-  if (!myGroupPartData || myGroupPartData->isIndexShape)
+  if (!myGroupPartData || !myGroupPartData->shapeIndexes.empty())
   {
     pc->orderedRGBA.setNum(frame->resValues.size());
     uint32_t* packedColors = pc->orderedRGBA.startEditing();
@@ -481,7 +481,7 @@ float FdFEGroupPartKit::getResultFromMaterialIndex(unsigned int matIdx) const
 
   int resIdx = -1;
   ResultsFrame* frame = myResultFrames[myCurrentFrame];
-  if (!myGroupPartData || myGroupPartData->isIndexShape)
+  if (!myGroupPartData || !myGroupPartData->shapeIndexes.empty())
     resIdx = matIdx;
   else
     switch (frame->resLookPolicy)
