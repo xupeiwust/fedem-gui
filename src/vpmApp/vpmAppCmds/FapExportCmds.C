@@ -94,15 +94,31 @@ namespace Fap {
 #endif
 }
 
-
-//! map/set sorting
-struct idSort
-{
-  bool operator()(const FmBase* fm1, const FmBase* fm2) const
+namespace {
+  struct idSort
   {
-    return (fm1->getID() < fm2->getID());
+    bool operator()(const FmBase* fm1, const FmBase* fm2) const
+    {
+      return (fm1->getID() < fm2->getID());
+    }
+  };
+
+  FFuFileDialog* saveFile(const char* title = NULL)
+  {
+    return FFuFileDialog::create(FmDB::getMechanismObject()->getAbsModelFilePath(),
+                                 title, FFuFileDialog::FFU_SAVE_FILE, true);
   }
-};
+
+  void writeMetaData(std::ostream& os, const std::string& fileName)
+  {
+    os <<"# Fedem version: "<< FFaAppInfo::getVersion()
+       <<"\n# Model file: "<< FmDB::getMechanismObject()->getModelFileName()
+       <<"\n# This file: "<< fileName
+       <<"\n# Exported by: "<< FFaAppInfo::getUser()
+       <<", "<< FFaAppInfo::getDate()
+       <<"\n#\n";
+  }
+}
 
 //------------------------------------------------------------------------------
 
@@ -181,13 +197,11 @@ void FapExportCmds::init()
   cmdItem->setText("Export model to CGeo...");
   cmdItem->setToolTip("Export model to CGe");
   cmdItem->setActivatedCB(FFaDynCB0S(FapExportCmds::exportCGeo));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 
   cmdItem = new FFuaCmdItem("cmdId_export_dtsDigitalTwin");
   cmdItem->setText("Export Digital Twin...");
   cmdItem->setToolTip("Export current model to a zip'ed Digital Twin");
   cmdItem->setActivatedCB(FFaDynCB0S(FapExportCmds::exportDigitalTwin));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 
   cmdItem = new FFuaCmdItem("cmdId_export_pipeStringWear");
   cmdItem->setText("Export Pipe String Wear...");
@@ -198,14 +212,6 @@ void FapExportCmds::init()
 #else
   cmdItem->setGetSensitivityCB(FFaDynCB1S([](bool& s){ s = false; },bool&));
 #endif
-}
-
-//------------------------------------------------------------------------------
-
-static FFuFileDialog* saveFile(const char* title = NULL)
-{
-  return FFuFileDialog::create(FmDB::getMechanismObject()->getAbsModelFilePath(),
-                               title, FFuFileDialog::FFU_SAVE_FILE, true);
 }
 
 //------------------------------------------------------------------------------
@@ -844,17 +850,6 @@ bool FapExportCmds::exportGraph(const std::vector<FmCurveSet*>& curves,
 #else
   return false;
 #endif
-}
-
-//------------------------------------------------------------------------------
-
-static void writeMetaData(std::ostream& os, const std::string& fileName)
-{
-  FFaAppInfo current;
-  os <<"# Fedem version: "<< current.version <<"\n";
-  os <<"# Model file: "<< FmDB::getMechanismObject()->getModelFileName() <<"\n";
-  os <<"# This file: "<< fileName <<"\n";
-  os <<"# Exported by: "<< current.user <<", "<< current.date <<"\n#\n";
 }
 
 //------------------------------------------------------------------------------
