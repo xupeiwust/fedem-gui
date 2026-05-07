@@ -33,7 +33,7 @@ public:
 
   static bool solveAll(bool preBatch);
   static bool solveStress(bool preBatch);
-  static bool solveModes(bool preBatch);
+  static bool solveModes(bool preBatch, bool forSelected = false);
   static bool solveRosette(bool preBatch);
   static bool solveStrainCoat(bool preBatch);
 
