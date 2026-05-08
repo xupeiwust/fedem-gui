@@ -38,13 +38,11 @@ void FapLinkVisualCmds::init()
   cmdItem->setText("Show Subassembly Parts");
   cmdItem->setToolTip("Show the parts in the selected subassembly");
   cmdItem->setActivatedCB(FFaDynCB0S([](){ FapLinkVisualCmds::subassemblySelection(true); }));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 
   cmdItem = new FFuaCmdItem("cmdId_SubassemblySelection_hide");
   cmdItem->setText("Hide Subassembly Parts");
   cmdItem->setToolTip("Hides the parts in the selected subassembly");
   cmdItem->setActivatedCB(FFaDynCB0S([](){ FapLinkVisualCmds::subassemblySelection(false); }));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 }
 
 

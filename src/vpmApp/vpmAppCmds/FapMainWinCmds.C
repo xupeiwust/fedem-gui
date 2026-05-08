@@ -25,7 +25,6 @@ void FapMainWinCmds::init()
   cmdItem->setToolTip("Model Manager");
   cmdItem->setToggledCB(FFaDynCB1S(FapMainWinCmds::showModelManager,bool));
   cmdItem->setGetToggledCB(FFaDynCB1S(FapMainWinCmds::getModelManagerToggle,bool&));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 
   cmdItem = new FFuaCmdItem("cmdId_mainWin_showProperties");
   cmdItem->setSmallIcon(propertyEditor_xpm);
@@ -33,77 +32,66 @@ void FapMainWinCmds::init()
   cmdItem->setToolTip("Property Editor");
   cmdItem->setToggledCB(FFaDynCB1S(FapMainWinCmds::showProperties,bool));
   cmdItem->setGetToggledCB(FFaDynCB1S(FapMainWinCmds::getPropertiesToggle,bool&));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 
   cmdItem = new FFuaCmdItem("cmdId_mainWin_showStdToolBar");
   cmdItem->setText("Standard");
   cmdItem->setToolTip("Standard");
   cmdItem->setToggledCB(FFaDynCB1S(FapMainWinCmds::showStdToolBar,bool));
   cmdItem->setGetToggledCB(FFaDynCB1S(FapMainWinCmds::getStdToolBarToggle,bool&));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 
   cmdItem = new FFuaCmdItem("cmdId_mainWin_showWindowsToolBar");
   cmdItem->setText("Windows");
   cmdItem->setToolTip("Windows");
   cmdItem->setToggledCB(FFaDynCB1S(FapMainWinCmds::showWindowsToolBar,bool));
   cmdItem->setGetToggledCB(FFaDynCB1S(FapMainWinCmds::getWindowsToolBarToggle,bool&));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 
   cmdItem = new FFuaCmdItem("cmdId_mainWin_showSolveToolBar");
   cmdItem->setText("Solve");
   cmdItem->setToolTip("Solve");
   cmdItem->setToggledCB(FFaDynCB1S(FapMainWinCmds::showSolveToolBar,bool));
   cmdItem->setGetToggledCB(FFaDynCB1S(FapMainWinCmds::getSolveToolBarToggle,bool&));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 
   cmdItem = new FFuaCmdItem("cmdId_mainWin_showViewCtrlToolBar");
   cmdItem->setText("View Control");
   cmdItem->setToolTip("View Control");
   cmdItem->setToggledCB(FFaDynCB1S(FapMainWinCmds::showViewCtrlToolBar,bool));
   cmdItem->setGetToggledCB(FFaDynCB1S(FapMainWinCmds::getViewCtrlToolBarToggle,bool&));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 
   cmdItem = new FFuaCmdItem("cmdId_mainWin_showThreeDViewsToolBar");
   cmdItem->setText("3D Views");
   cmdItem->setToolTip("3D Views");
   cmdItem->setToggledCB(FFaDynCB1S(FapMainWinCmds::showThreeDViewsToolBar,bool));
   cmdItem->setGetToggledCB(FFaDynCB1S(FapMainWinCmds::getThreeDViewsToolBarToggle,bool&));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 
   cmdItem = new FFuaCmdItem("cmdId_mainWin_showMechWindToolBar");
   cmdItem->setText("Windpower Creation");
   cmdItem->setToolTip("Windpower Creation");
   cmdItem->setToggledCB(FFaDynCB1S(FapMainWinCmds::showMechWindToolBar,bool));
   cmdItem->setGetToggledCB(FFaDynCB1S(FapMainWinCmds::getMechWindToolBarToggle,bool&));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 
   cmdItem = new FFuaCmdItem("cmdId_mainWin_showMechCreateToolBar");
   cmdItem->setText("Mechanism Creation");
   cmdItem->setToolTip("Mechanism Creation");
   cmdItem->setToggledCB(FFaDynCB1S(FapMainWinCmds::showMechCreateToolBar,bool));
   cmdItem->setGetToggledCB(FFaDynCB1S(FapMainWinCmds::getMechCreateToolBarToggle,bool&));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 
   cmdItem = new FFuaCmdItem("cmdId_mainWin_showMechModellingToolsToolBar");
   cmdItem->setText("Mechanism Modelling Tools");
   cmdItem->setToolTip("Mechanism Modelling Tools");
   cmdItem->setToggledCB(FFaDynCB1S(FapMainWinCmds::showMechModellingToolsToolBar,bool));
   cmdItem->setGetToggledCB(FFaDynCB1S(FapMainWinCmds::getMechModellingToolsToolBarToggle,bool&));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 
   cmdItem = new FFuaCmdItem("cmdId_mainWin_showCtrlCreateToolBar");
   cmdItem->setText("Control System Create");
   cmdItem->setToolTip("Control System Create Toolbar");
   cmdItem->setToggledCB(FFaDynCB1S(FapMainWinCmds::showCtrlCreateToolBar,bool));
   cmdItem->setGetToggledCB(FFaDynCB1S(FapMainWinCmds::getCtrlCreateToolBarToggle,bool&));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 
   cmdItem = new FFuaCmdItem("cmdId_mainWin_showCtrlModellingToolsToolBar");
   cmdItem->setText("Control System Modelling Tools");
   cmdItem->setToolTip("Control System Modelling Tools Toolbar");
   cmdItem->setToggledCB(FFaDynCB1S(FapMainWinCmds::showCtrlModellingToolsToolBar,bool));
   cmdItem->setGetToggledCB(FFaDynCB1S(FapMainWinCmds::getCtrlModellingToolsToolBarToggle,bool&));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 }
 //----------------------------------------------------------------------------
 

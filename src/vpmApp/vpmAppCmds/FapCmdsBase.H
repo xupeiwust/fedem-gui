@@ -19,8 +19,8 @@ class FuiGraphView;
 class FFaViewItem;
 class FmPart;
 class FmElementGroupProxy;
-
-typedef std::map< FmPart*, std::vector<FmElementGroupProxy*> > FapPartGroupsMap;
+using FapGroupVec = std::vector<FmElementGroupProxy*>;
+using FapPartGroupsMap = std::map<FmPart*,FapGroupVec>;
 
 
 class FapCmdsBase
@@ -32,7 +32,6 @@ protected:
   static FuiGraphView* getActiveGraphView();
 
   // for setGetSensitivityCB
-  static void alwaysSensitive(bool& sens) { sens = true; }
   static void isProEdition(bool& isPro);
   static void isModellerActive(bool& active);
   static void isCtrlModellerActive(bool& active);
