@@ -17,16 +17,15 @@ class FFpSNCurve;
 
 struct FapCurveStat
 {
-  double rms;
-  double avg;
-  double stdDev;
-  double integral;
-  double min;
-  double max;
-  FapCurveStat() { rms = avg = stdDev = integral = min = max = 0.0; }
+  double rms = 0.0;
+  double avg = 0.0;
+  double stdDev = 0.0;
+  double integral = 0.0;
+  double min = 0.0;
+  double max = 0.0;
 };
 
-typedef std::pair<const FmCurveSet*,FapCurveStat> FapCurveSet;
+using FapCurveSet = std::pair<const FmCurveSet*,FapCurveStat>;
 
 
 /*!
@@ -44,6 +43,8 @@ typedef std::pair<const FmCurveSet*,FapCurveStat> FapCurveSet;
 
 class FapGraphDataMap
 {
+  using FapDataMap = std::map<const FmCurveSet*,FFpCurve>;
+
 public:
   FapGraphDataMap() {}
 
@@ -57,7 +58,7 @@ public:
   { return this->findPlottingData({curve},&msg,appnd); }
 
   bool findPlottingData(const std::vector<FmCurveSet*>& curves,
-		        std::string* errMsg = NULL, bool isAppending = false);
+                        std::string* errMsg = NULL, bool isAppending = false);
 
   FFpCurve* getFFpCurve(const FmCurveSet* curve,
 			bool scaleShift = true, bool createIfNone = false);
@@ -79,21 +80,23 @@ public:
   bool setDataChanged(const FmCurveSet* curve);
 
   void erase(const FmCurveSet* curve) { dataMap.erase(curve); }
-  void clear() { dataMap.clear(); }
+  void clear() { dataMap.clear(); compMap.clear(); }
 
 protected:
-  static void replaceCombinedCurves(std::vector<FmCurveSet*>& curves);
+  static void resolveCombinedCurves(std::vector<FmCurveSet*>& curves,
+                                    std::vector<FmCurveSet*>& cCurves);
 
-  static bool findDataFromFunc(const FmCurveSet* curve,
-			       FFpCurve& curveData, std::string& message);
+  static bool findDataFromFunc(const FmCurveSet* curve, FFpCurve& curveData,
+                               std::string& message);
 
-  static bool findDataFromFile(const FmCurveSet* curve,
-			       FFpCurve& curveData, std::string& message);
+  static bool findDataFromFile(const FmCurveSet* curve, FFpCurve& curveData,
+                               std::string& message);
 
   bool findCombinedCurveData(const FmCurveSet* curve, std::string& message);
 
 private:
-  std::map<const FmCurveSet*,FFpCurve> dataMap;
+  FapDataMap dataMap; //!< Curve data for the plotted curves
+  FapDataMap compMap; //!< Curve data for combined curve components
 };
 
 #endif
