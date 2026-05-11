@@ -214,9 +214,10 @@ FuiQtCurveDefSheet::FuiQtCurveDefSheet(const char* name)
 
 void FuiQtCurveDefSheet::setNoComps(unsigned int nc)
 {
+  if (nc <= curveComps.size()) return;
+
   char label[3] = "A:";
-  if (!curveComps.empty())
-    label[0] += curveComps.size()-1;
+  label[0] += curveComps.size();
 
   QLayout* layout = combFrame->getQtWidget()->layout();
 

@@ -29,7 +29,6 @@
 #include "vpmDB/FmSoilPile.H"
 #include "FFaLib/FFaCmdLineArg/FFaCmdLineArg.H"
 #include "FFaLib/FFaString/FFaStringExt.H"
-#include "FFaLib/FFaDefinitions/FFaAppInfo.H"
 
 
 //----------------------------------------------------------------------------
@@ -123,9 +122,9 @@ FFaListViewItem* FapUASimModelListView::getParent(FFaListViewItem* item,
 #endif
 
   FmModelMemberBase* mmb = dynamic_cast<FmModelMemberBase*>(item);
-  if (!mmb) return 0;
+  if (!mmb) return NULL;
 
-  FFaListViewItem* parent = 0;
+  FFaListViewItem* parent = NULL;
   if (mmb->isOfType(FmRingStart::getClassTypeID()))
   {
     parent = ((FmRingStart*)mmb)->getParent();
@@ -134,7 +133,7 @@ FFaListViewItem* FapUASimModelListView::getParent(FFaListViewItem* item,
         if (assID.back() != parent->getItemID())
         {
           std::cerr <<"ERROR: Assembly topology inconsistency detected!"<< std::endl;
-          parent = 0;
+          parent = NULL;
         }
   }
   else if (mmb->isOfType(FmElementGroupProxy::getClassTypeID()))
@@ -278,31 +277,19 @@ FFuaUICommands* FapUASimModelListView::getCommands()
 {
   FuaItemsLVCommands* cmds = new FuaItemsLVCommands();
 
-  // Clearing sub menu entries
-
-  this->createHeader.clear();
-  this->createSpringFunctionHeader.clear();
-  this->createDamperFunctionHeader.clear();
-  this->createFrictionHeader.clear();
-
   // Setting up sub menu command headers :
 
+  this->createHeader.clear();
   this->createHeader.setText("Create");
+  this->createSpringFunctionHeader.clear();
   this->createSpringFunctionHeader.setText("Spring characteristics");
   this->createSpringFunctionHeader.setSmallIcon(spring_xpm);
+  this->createDamperFunctionHeader.clear();
   this->createDamperFunctionHeader.setText("Damper characteristics");
   this->createDamperFunctionHeader.setSmallIcon(damper_xpm);
+  this->createFrictionHeader.clear();
   this->createFrictionHeader.setText("Friction");
   this->createFrictionHeader.setSmallIcon(friction_xpm);
-
-  this->convertHeader.setText("Convert function");
-  this->convertToSpringHeader.setText("Spring characteristics");
-  this->convertToSpringHeader.setSmallIcon(spring_xpm);
-  this->convertToDamperHeader.setText("Damper characteristics");
-  this->convertToDamperHeader.setSmallIcon(damper_xpm);
-
-  this->solveHeader.setText("Solve");
-  this->resultHeader.setText("Result");
 
   // Build menus
 
@@ -359,14 +346,19 @@ FFuaUICommands* FapUASimModelListView::getCommands()
 
   if (convertable) {
     this->convertHeader.clear();
-    this->convertToSpringHeader.clear();
-    this->convertToDamperHeader.clear();
-
+    this->convertHeader.setText("Convert function");
     cmds->popUpMenu.push_back(&this->separator);
     cmds->popUpMenu.push_back(&this->convertHeader);
 
     if (convertableSprDa) {
+      this->convertToSpringHeader.clear();
+      this->convertToSpringHeader.setText("Spring characteristics");
+      this->convertToSpringHeader.setSmallIcon(spring_xpm);
       this->convertHeader.push_back(&this->convertToSpringHeader);
+
+      this->convertToDamperHeader.clear();
+      this->convertToDamperHeader.setText("Damper characteristics");
+      this->convertToDamperHeader.setSmallIcon(damper_xpm);
       this->convertHeader.push_back(&this->convertToDamperHeader);
 
       this->convertToSpringHeader.push_back(FFuaCmdItem::getCmdItem("cmdId_function_ConvertSprTransStiff"));
@@ -420,10 +412,11 @@ FFuaUICommands* FapUASimModelListView::getCommands()
     cmds->popUpMenu.push_back(&this->solveHeader);
 
     this->solveHeader.clear();
-    if (!FFaAppInfo::checkProgramPath("fedem_partsol").empty())
-      this->solveHeader.push_back(FFuaCmdItem::getCmdItem("cmdId_solve_solveLink"));
+    this->solveHeader.setText("Solve");
+    this->solveHeader.push_back(FFuaCmdItem::getCmdItem("cmdId_solve_solveLink"));
     this->solveHeader.push_back(FFuaCmdItem::getCmdItem("cmdId_solve_reduceLink"));
     this->solveHeader.push_back(FFuaCmdItem::getCmdItem("cmdId_solve_solveStressOnLink"));
+    this->solveHeader.push_back(FFuaCmdItem::getCmdItem("cmdId_solve_solveModesOnLink"));
     this->solveHeader.push_back(FFuaCmdItem::getCmdItem("cmdId_solve_solveRosetteOnLink"));
     this->solveHeader.push_back(FFuaCmdItem::getCmdItem("cmdId_solve_solveStrainCoatOnLink"));
   }
@@ -437,6 +430,7 @@ FFuaUICommands* FapUASimModelListView::getCommands()
       cmds->popUpMenu.push_back(&this->resultHeader);
 
       this->resultHeader.clear();
+      this->resultHeader.setText("Result");
       this->resultHeader.push_back(FFuaCmdItem::getCmdItem("cmdId_dBCreate_beamForceGraph"));
     }
     if (isObjectOfTypeSelected(FmBladeDesign(true)))

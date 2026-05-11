@@ -75,7 +75,7 @@ char FapSolveCmds::haveCloudAccess = 0;
 
 void FapSolveCmds::init()
 {
-  //! Lambda function for sensitivity on part-level recovery commands
+  // Lambda function for sensitivity on part-level recovery commands
   auto&& getSolveOnPartSensitivity = [](bool& sensitive)
   {
     if (FpPM::isModelTouchable())
@@ -90,7 +90,7 @@ void FapSolveCmds::init()
       sensitive = false;
   };
 
-  //! Lambda function for sensitivity on element group-level recovery commands
+  // Lambda function for sensitivity on element group-level recovery commands
   auto&& getSolveOnPartGroupSensitivity = [](bool& sensitive)
   {
     if (FpPM::isModelTouchable())
@@ -101,6 +101,41 @@ void FapSolveCmds::init()
         if (!(sensitive = (sel->isOfType(FmPart::getClassTypeID()) ||
                            sel->isOfType(FmElementGroupProxy::getClassTypeID()))))
           break;
+    }
+    else
+      sensitive = false;
+  };
+
+  // Lambda function for sensitivity on part-level mode shape recovery
+  auto&& getSolveModesOnPartSensitivity = [](bool& sensitive)
+  {
+    sensitive = false;
+    if (FpPM::isModelTouchable() && FmDB::getModesOptions(false))
+      if (FmAnalysis* ana = FmDB::getActiveAnalysis(false);
+	  ana && ana->solveEigenvalues.getValue())
+      {
+        std::vector<FmModelMemberBase*> selection;
+        sensitive = FapCmdsBase::getCurrentSelection(selection);
+        for (FmModelMemberBase* sel : selection)
+          if (!(sensitive = sel->isOfType(FmPart::getClassTypeID())))
+            break;
+      }
+  };
+
+  // Lambda function for sensitivity on part-level gage recovery
+  auto&& getSolveGageOnPartSensitivity = [](bool& sensitive)
+  {
+    if (FpPM::isModelTouchable())
+    {
+      bool selectionHasRosettes = false;
+      std::vector<FmModelMemberBase*> selection;
+      sensitive = FapCmdsBase::getCurrentSelection(selection);
+      for (FmModelMemberBase* sel : selection)
+        if (!(sensitive = sel->isOfType(FmPart::getClassTypeID())))
+          break;
+        else if (static_cast<FmPart*>(sel)->hasStrainRosettes())
+          selectionHasRosettes = true;
+      sensitive &= selectionHasRosettes;
     }
     else
       sensitive = false;
@@ -199,12 +234,19 @@ void FapSolveCmds::init()
   cmdItem->setActivatedCB(FFaDynCB0S(FapSolveCmds::solveStressOnPart));
   cmdItem->setGetSensitivityCB(FFaDynCB1S(getSolveOnPartGroupSensitivity,bool&));
 
+  cmdItem = new FFuaCmdItem("cmdId_solve_solveModesOnLink");
+  cmdItem->setSmallIcon(solveModes_xpm);
+  cmdItem->setText("Mode Shapes");
+  cmdItem->setToolTip("Recover Mode Shapes on FE part");
+  cmdItem->setActivatedCB(FFaDynCB0S([](){ FapSolveCmds::solveModes(false,true); }));
+  cmdItem->setGetSensitivityCB(FFaDynCB1S(getSolveModesOnPartSensitivity,bool&));
+
   cmdItem = new FFuaCmdItem("cmdId_solve_solveRosetteOnLink");
   cmdItem->setSmallIcon(solveRosette_xpm);
   cmdItem->setText("Strain Rosettes");
   cmdItem->setToolTip("Recover Strain Rosettes on FE part");
   cmdItem->setActivatedCB(FFaDynCB0S(FapSolveCmds::solveRosetteOnPart));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(getSolveOnPartSensitivity,bool&));
+  cmdItem->setGetSensitivityCB(FFaDynCB1S(getSolveGageOnPartSensitivity,bool&));
 
   cmdItem = new FFuaCmdItem("cmdId_solve_solveStrainCoatOnLink");
   cmdItem->setSmallIcon(solveStrainCoat_xpm);
@@ -696,7 +738,7 @@ bool FapSolveCmds::solveStress(bool prepareForBatchOnly)
 
 //----------------------------------------------------------------------------
 
-bool FapSolveCmds::solveModes(bool prepareForBatchOnly)
+bool FapSolveCmds::solveModes(bool prepareForBatchOnly, bool forSelected)
 {
   FmSimulationEvent* event = FapSimEventHandler::getActiveEvent();
   if (event && !FapLicenseManager::checkSimEventLicense())
@@ -709,7 +751,10 @@ bool FapSolveCmds::solveModes(bool prepareForBatchOnly)
   std::string vtfFile;
 
   std::vector<FmPart*> allParts;
-  FmDB::getFEParts(allParts,true);
+  if (forSelected)
+    FapCmdsBase::getSelectedParts(allParts);
+  else
+    FmDB::getFEParts(allParts,true);
 
   for (FmPart* part : allParts)
   {

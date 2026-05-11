@@ -49,7 +49,6 @@ void FapToolsCmds::init()
   cmdItem->setText("Show Modeler");
   cmdItem->setToolTip("Show Modeler");
   cmdItem->setActivatedCB(LAMBDA(Fui::modellerUI();FuiModes::cancel()));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 
   cmdItem = new FFuaCmdItem("cmdId_ctrl_show");
   cmdItem->setSmallIcon(ctrlSystem_xpm);
@@ -58,49 +57,42 @@ void FapToolsCmds::init()
 #ifdef USE_INVENTOR
   cmdItem->setActivatedCB(LAMBDA_CTRL(FdCtrlDB::openCtrl()));
 #endif
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 
   cmdItem = new FFuaCmdItem("cmdId_ctrl_gridSnap");
   cmdItem->setSmallIcon(ctrlGrid_xpm);
   cmdItem->setText("Control Editor Grid/Snap...");
   cmdItem->setToolTip("Control Editor Grid/Snap");
   cmdItem->setActivatedCB(LAMBDA_CTRL(Fui::ctrlGridSnapUI()));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 
   cmdItem = new FFuaCmdItem("cmdId_tools_preferences");
   cmdItem->setSmallIcon(additionalSolverOptions_xpm);
   cmdItem->setText("Additional Solver Options...");
   cmdItem->setToolTip("Additional Solver Options");
   cmdItem->setActivatedCB(LAMBDA(Fui::preferencesUI()));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 
   cmdItem = new FFuaCmdItem("cmdId_tools_viewFilter");
   cmdItem->setSmallIcon(viewFilter_xpm);
   cmdItem->setText("General Appearance...");
   cmdItem->setToolTip("General Appearance");
   cmdItem->setActivatedCB(LAMBDA(Fui::viewSettingsUI()));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 
   cmdItem = new FFuaCmdItem("cmdId_tools_objectBrowser");
   cmdItem->setSmallIcon(objectBrowser_xpm);
   cmdItem->setText("Object Browser...");
   cmdItem->setToolTip("Object Browser");
   cmdItem->setActivatedCB(LAMBDA(Fui::objectBrowserUI()));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 
   cmdItem = new FFuaCmdItem("cmdId_tools_outputList");
   cmdItem->setSmallIcon(infoList_xpm);
   cmdItem->setText("Show Output List");
   cmdItem->setToolTip("Show Output List");
   cmdItem->setActivatedCB(LAMBDA(Fui::outputListUI()));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 
   cmdItem = new FFuaCmdItem("cmdId_tools_miniFileBrowser");
   cmdItem->setSmallIcon(browseRDB_xpm);
   cmdItem->setText("Result File Browser...");
   cmdItem->setToolTip("Result File Browser");
   cmdItem->setActivatedCB(LAMBDA(Fui::resultFileBrowserUI()));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 
   cmdItem = new FFuaCmdItem("cmdId_tools_linkRamSettings");
   cmdItem->setSmallIcon(linkRamSettings_xpm);
@@ -113,42 +105,36 @@ void FapToolsCmds::init()
   cmdItem->setText("Model Preferences...");
   cmdItem->setToolTip("Model Preferences");
   cmdItem->setActivatedCB(LAMBDA(Fui::modelPreferencesUI()));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 
   cmdItem = new FFuaCmdItem("cmdId_tools_seaEnvironment");
   cmdItem->setSmallIcon(sea_xpm);
   cmdItem->setText("Sea Environment...");
   cmdItem->setToolTip("Sea Environment");
   cmdItem->setActivatedCB(LAMBDA(Fui::seaEnvironmentUI()));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 
   cmdItem = new FFuaCmdItem("cmdId_tools_airEnvironment");
   cmdItem->setSmallIcon(windAirEnv_xpm);
   cmdItem->setText("Aerodynamic Setup...");
   cmdItem->setToolTip("Aerodynamic Setup");
   cmdItem->setActivatedCB(LAMBDA(Fui::airEnvironmentUI()));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 
   cmdItem = new FFuaCmdItem("cmdId_tools_airfoilDefinition");
   cmdItem->setSmallIcon(windAirFoil_xpm);
   cmdItem->setText("Browse Airfoils...");
   cmdItem->setToolTip("Browse Airfoils for Turbine Blades");
   cmdItem->setActivatedCB(LAMBDA(Fui::airfoilDefinitionUI()));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 
   cmdItem = new FFuaCmdItem("cmdId_tools_bladeDefinition");
   cmdItem->setSmallIcon(windBladeProp_xpm);
   cmdItem->setText("Blade Definition...");
   cmdItem->setToolTip("Blade definition for Turbine Assembly");
   cmdItem->setActivatedCB(LAMBDA(Fui::bladeDefinitionUI()));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 
   cmdItem = new FFuaCmdItem("cmdId_tools_createTurbineAssembly");
   cmdItem->setSmallIcon(windTurbine_xpm);
   cmdItem->setText("Turbine Definition...");
   cmdItem->setToolTip("Turbine Definition");
   cmdItem->setActivatedCB(LAMBDA(Fui::turbineAssemblyUI()));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 
   cmdItem = new FFuaCmdItem("cmdId_tools_createTurbineTower");
   cmdItem->setSmallIcon(windTower_xpm);
@@ -165,45 +151,38 @@ void FapToolsCmds::init()
   cmdItem->setText("Beamstring Pair Definition...");
   cmdItem->setToolTip("Beamstring Pair Definition");
   cmdItem->setActivatedCB(LAMBDA(Fui::beamstringPairUI()));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 
   cmdItem = new FFuaCmdItem("cmdId_tools_setFileAssociations");
   cmdItem->setText("Set File Associations...");
   cmdItem->setToolTip("Set File Associations");
   cmdItem->setActivatedCB(FFaDynCB0S(FapToolsCmds::setFileAssociations));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 
   cmdItem = new FFuaCmdItem("cmdId_tools_plugins");
   cmdItem->setText("Plug-Ins...");
   cmdItem->setToolTip("Plug-Ins");
   cmdItem->setActivatedCB(LAMBDA(Fui::pluginsUI()));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 
   cmdItem = new FFuaCmdItem("cmdId_tools_eventDefinition");
   cmdItem->setSmallIcon(eventDef_xpm);
   cmdItem->setText("Event Definitions...");
   cmdItem->setToolTip("Events");
   cmdItem->setActivatedCB(LAMBDA(Fui::eventDefinitionUI()));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 
   cmdItem = new FFuaCmdItem("cmdId_tools_distance");
   cmdItem->setSmallIcon(measureDistance_xpm);
   cmdItem->setText("Measure distance...");
   cmdItem->setToolTip("Measure distance between two points");
   cmdItem->setActivatedCB(LAMBDA(FuiModes::setMode(FuiModes::MEASURE_DISTANCE_MODE)));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 
   cmdItem = new FFuaCmdItem("cmdId_tools_angle");
   cmdItem->setSmallIcon(measureAngle_xpm);
   cmdItem->setText("Measure angle...");
   cmdItem->setToolTip("Measure angle between two points");
   cmdItem->setActivatedCB(LAMBDA(FuiModes::setMode(FuiModes::MEASURE_ANGLE_MODE)));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 
   for (int i = 0; i < 40; i++)
   {
     cmdItem = new FFuaCmdItem("cmdId_tools_addon" + std::to_string(i));
-    cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
     switch (i) {
     case  0: cmdItem->setActivatedCB(LAMBDA(FapToolsCmds::addonLaunch( 0))); break;
     case  1: cmdItem->setActivatedCB(LAMBDA(FapToolsCmds::addonLaunch( 1))); break;

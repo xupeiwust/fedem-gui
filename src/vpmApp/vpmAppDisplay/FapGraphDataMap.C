@@ -24,7 +24,7 @@
 
 
 /*!
-  Builds the \a dataMap with operations and then reads data from the RDB,
+  Builds the \ref dataMap with operations and then reads data from the RDB,
   external curve data files, and/or internal functions for a set of \a curves.
   Error messages (if any) are given in a dialog box and output list if the
   the pointer \a errMsg is null. Otherwise, they are returned in \a *errMsg.
@@ -36,14 +36,21 @@ bool FapGraphDataMap::findPlottingData(const std::vector<FmCurveSet*>& curves,
   if (curves.empty())
     return true;
 
+#ifdef FAP_DEBUG
+  std::cout <<"\nFapGraphDataMap::findPlottingData():";
+  for (FmCurveSet* curve : curves)
+    std::cout <<"\n\t"<< curve->getIdString(true);
+  std::cout << std::endl;
+#endif
+
   // First, resolve the combined curves (if any) such that we
   // only try to read the basic curves (RDB, external and function)
-  std::vector<FmCurveSet*> bCurves(curves);
-  replaceCombinedCurves(bCurves);
+  std::vector<FmCurveSet*> bCurves(curves), cCurves;
+  resolveCombinedCurves(bCurves,cCurves);
 #ifdef FAP_DEBUG
-  if (bCurves != curves)
-    std::cout <<"FapGraphDataMap: Resolved combined curves "
-              << curves.size() <<" --> "<< bCurves.size() << std::endl;
+  if (bCurves.size() < curves.size())
+    std::cout <<"FapGraphDataMap: Resolved combined curves "<< curves.size()
+              <<" --> "<< bCurves.size() <<"+"<< cCurves.size() << std::endl;
 #endif
 
   std::string  msg1, msg2;
@@ -54,21 +61,26 @@ bool FapGraphDataMap::findPlottingData(const std::vector<FmCurveSet*>& curves,
 
   // Set the load time interval from the owner graph of the first RDB curve
   for (FmCurveSet* curve : curves)
-    if (curve->usingInputMode() == FmCurveSet::TEMPORAL_RESULT ||
-        curve->usingInputMode() == FmCurveSet::COMB_CURVES)
-      if (FmGraph* graph = curve->getOwnerGraph();
-          graph && graph->getUseTimeRange())
-      {
-	double tmin, tmax;
-	graph->getTimeRange(tmin,tmax);
-	rdbCurves.setTimeInterval(tmin,tmax);
-	break;
-      }
+    if (FmGraph* graph = curve->getOwnerGraph();
+        graph && graph->getUseTimeRange() && curve->isResultDependent())
+    {
+      double tmin, tmax;
+      graph->getTimeRange(tmin,tmax);
+      rdbCurves.setTimeInterval(tmin,tmax);
+#ifdef FAP_DEBUG
+      std::cout <<"\tUsing time range ["<< tmin <<","<< tmax <<"]"<< std::endl;
+#endif
+      break;
+    }
 
+  // Loop over all curves that should be loaded, to initialize for RBD reading,
+  // and to load the data for curves of type function and external
   int rdbType = -1;
-  std::map<const FmCurveSet*,FFpCurve>::iterator cit;
-  for (FmCurveSet* curve : bCurves)
+  const size_t nBC = bCurves.size();
+  for (size_t j = 0; j < nBC+cCurves.size(); j++)
   {
+    FmCurveSet* curve = j < nBC ? bCurves[j] : cCurves[j-nBC];
+
     if (curve->usingInputMode() == FmCurveSet::SPATIAL_RESULT)
     {
       std::vector<FmIsPlottedBase*> spatialObjs;
@@ -125,7 +137,7 @@ bool FapGraphDataMap::findPlottingData(const std::vector<FmCurveSet*>& curves,
 
 	// Initialize the axis definitions for this spatial RDB-curve.
 	// Any existing curve data is thrown away.
-	FFpCurve& ffpc = dataMap[curve];
+	FFpCurve& ffpc = j < nBC ? dataMap[curve] : compMap[curve];
 	ffpc.resize(nPoints);
 	ffpc.initAxes(xDescr,spatialDescr,
 		      curve->getResultOper(FmCurveSet::XAXIS),
@@ -135,8 +147,11 @@ bool FapGraphDataMap::findPlottingData(const std::vector<FmCurveSet*>& curves,
       }
     }
 
-    if ((cit = dataMap.find(curve)) == dataMap.end())
+    FapDataMap::iterator cit;
+    if (j < nBC && (cit = dataMap.find(curve)) == dataMap.end())
       cit = dataMap.emplace(curve,FFpCurve()).first; // new RDB-curve
+    else if (j >= nBC && (cit = compMap.find(curve)) == compMap.end())
+      cit = compMap.emplace(curve,FFpCurve()).first; // new RDB-curve
     else if (cit->first->usingInputMode() == FmCurveSet::TEMPORAL_RESULT)
     {
       // Clear the temporal RDB-curve data when ...
@@ -147,6 +162,11 @@ bool FapGraphDataMap::findPlottingData(const std::vector<FmCurveSet*>& curves,
       else if (cit->first->hasDFTOptionsChanged(1))
         // DFT-options have changed while DFT is on, or we are appending
         cit->second.clear(); // while the DFT was switched off
+#ifdef FAP_DEBUG
+      else
+        std::cout <<"\tRetain cached curve data for "
+                  << cit->first->getIdString() << std::endl;
+#endif
     }
 
     if (cit->first->usingInputMode() <= FmCurveSet::RDB_RESULT)
@@ -175,22 +195,22 @@ bool FapGraphDataMap::findPlottingData(const std::vector<FmCurveSet*>& curves,
       break;
 
     case FmCurveSet::EXT_CURVE:
-      // Find data for "external curves" (i.e. defined via ascii/dac/rpc file)
+      // Find data for "external curves" (i.e., defined via ascii/dac/rpc file)
       if (cit->first->hasXYDataChanged() ||      // the curve data has changed
-	  cit->first->hasDFTOptionsChanged(1) || // options for dft has changed
-	  cit->second.empty())                   // this is the first read
-	if (!findDataFromFile(cit->first, cit->second, listMsg))
-	  cit->second.clear();
+          cit->first->hasDFTOptionsChanged(1) || // options for dft has changed
+          cit->second.empty())                   // this is the first read
+        if (!findDataFromFile(cit->first, cit->second, listMsg))
+          cit->second.clear();
       break;
 
     case FmCurveSet::INT_FUNCTION:
     case FmCurveSet::PREVIEW_FUNC:
       // Find data for "internal function" curves
       if (cit->first->hasXYDataChanged() ||      // the curve data has changed
-	  cit->first->hasDFTOptionsChanged(1) || // options for dft has changed
-	  cit->second.empty())                   // this is the first read
-	if (!findDataFromFunc(cit->first, cit->second, listMsg))
-	  cit->second.clear();
+          cit->first->hasDFTOptionsChanged(1) || // options for dft has changed
+          cit->second.empty())                   // this is the first read
+        if (!findDataFromFunc(cit->first, cit->second, listMsg))
+          cit->second.clear();
       break;
 
     default:
@@ -216,6 +236,78 @@ bool FapGraphDataMap::findPlottingData(const std::vector<FmCurveSet*>& curves,
           xValue = p->getGlobalCS().translation()[ix];
   };
 
+  // Lambda function transforming the curve data based on the user settings.
+  auto&& transformData = [isAppending,&message](const FmCurveSet* curve,
+                                                FFpCurve& crvData)
+  {
+    bool transformed = !isAppending;
+    if (curve->derivate())
+    {
+      if (!isAppending)
+        FFaMsg::pushStatus("Differentiating");
+#ifdef FAP_DEBUG
+      std::cout <<"FapGraphDataMap: Differentiating "
+                << curve->getIdString(true) << std::endl;
+#endif
+      if (!crvData.replaceByScaledShifted(curve->getDFTparameters()))
+        crvData.clear();
+      else if (!crvData.replaceByDerivative())
+        crvData.clear();
+    }
+    else if (curve->integrate())
+    {
+      if (!isAppending)
+        FFaMsg::pushStatus("Integrating");
+#ifdef FAP_DEBUG
+      std::cout <<"FapGraphDataMap: Integrating "
+                << curve->getIdString(true) << std::endl;
+#endif
+      if (!crvData.replaceByScaledShifted(curve->getDFTparameters()))
+        crvData.clear();
+      else if (!crvData.replaceByIntegral())
+        crvData.clear();
+    }
+    else if (curve->doDft())
+    {
+      if (!isAppending)
+        FFaMsg::pushStatus("Doing DFT transformation");
+#ifdef FAP_DEBUG
+      std::cout <<"FapGraphDataMap: DFT transforming "
+                << curve->getIdString(true) << std::endl;
+#endif
+      if (!crvData.replaceByDFT(curve->getDFTparameters(),
+                                curve->getUserDescription(),message))
+        crvData.clear(); // Don't plot curve if the DFT failed
+    }
+    else if (curve->doRainflow())
+    {
+      if (!isAppending)
+        FFaMsg::pushStatus("Doing rainflow analysis");
+#ifdef FAP_DEBUG
+      std::cout <<"FapGraphDataMap: Rainflow transforming "
+                << curve->getIdString(true) << std::endl;
+#endif
+      double ys = curve->getYScale();
+      RFprm rf(curve->getFatigueGateValue()/ys);
+      if (!curve->getFatigueEntireDomain())
+      {
+        rf.start = curve->getFatigueDomain().first;
+        rf.stop  = curve->getFatigueDomain().second;
+      }
+
+      // Beta feature: Plotting the peak-and-valley extraction results
+      bool pvx = curve->getUserDescription().find("#PVX") < std::string::npos;
+      if (!crvData.replaceByRainflow(rf,ys,pvx,curve->getUserDescription(),
+                                     message))
+        crvData.clear(); // Don't plot curve if the Rainflow failed
+    }
+    else
+      transformed = false;
+
+    if (transformed)
+      FFaMsg::popStatus();
+  };
+
   if (!rdbCurves.empty())
   {
     // Actually read the RDB curves from file
@@ -231,9 +323,9 @@ bool FapGraphDataMap::findPlottingData(const std::vector<FmCurveSet*>& curves,
     {
       readOK = rdbCurves.loadSpatialData (extr,message);
       if (rdbCurves.getNoXaxisValues())
-        for (cit = dataMap.begin(); cit != dataMap.end(); ++cit)
-          if (cit->first->usingInputMode() == FmCurveSet::SPATIAL_RESULT)
-            setXvalue(cit->second,cit->first->getResultOper(FmCurveSet::XAXIS));
+        for (FapDataMap::value_type& cp : dataMap)
+          if (cp.first->usingInputMode() == FmCurveSet::SPATIAL_RESULT)
+            setXvalue(cp.second,cp.first->getResultOper(FmCurveSet::XAXIS));
     }
     if (!isAppending) FFaMsg::popStatus();
     if (readOK && !msg1.empty())
@@ -245,91 +337,25 @@ bool FapGraphDataMap::findPlottingData(const std::vector<FmCurveSet*>& curves,
     }
   }
 
+  // Replace curve components by their Derivative, Fourier transform, etc.
+  for (FapDataMap::value_type& cp : compMap)
+    if (cp.first->hasDFTOptionsChanged() || cp.second.hasDataChanged())
+    {
+      transformData(cp.first,cp.second);
+      cp.second.onDataPlotted(); // Fix issue #148: Reset the dataChanged flag
+      // after the data has been transformed, to avoid they are transformed
+      // again when the combined curve using this curve is reloaded.
+    }
+
   // Process the expressions of the combined curves, if any
   for (FmCurveSet* curve : curves)
     if (curve->usingInputMode() == FmCurveSet::COMB_CURVES)
       findCombinedCurveData(curve,listMsg);
 
   // Replace the wanted curves by their Derivative, Fourier transform, etc.
-  int giveStatus = isAppending ? 0 : 1;
-  for (cit = dataMap.begin(); cit != dataMap.end(); ++cit)
-    if (cit->first->hasDFTOptionsChanged() || cit->second.hasDataChanged())
-    {
-      if (cit->first->derivate())
-      {
-	if (giveStatus == 1)
-	{
-	  FFaMsg::pushStatus("Differentiating");
-	  giveStatus = 2;
-	}
-#ifdef FAP_DEBUG
-        std::cout <<"FapGraphDataMap: Differentiating "
-                  << cit->first->getIdString(true) << std::endl;
-#endif
-	if (!cit->second.replaceByScaledShifted(cit->first->getDFTparameters()))
-	  cit->second.clear();
-	else if (!cit->second.replaceByDerivative())
-	  cit->second.clear();
-      }
-      else if (cit->first->integrate())
-      {
-	if (giveStatus == 1)
-	{
-	  FFaMsg::pushStatus("Integrating");
-	  giveStatus = 2;
-	}
-#ifdef FAP_DEBUG
-        std::cout <<"FapGraphDataMap: Integrating "
-                  << cit->first->getIdString(true) << std::endl;
-#endif
-	if (!cit->second.replaceByScaledShifted(cit->first->getDFTparameters()))
-	  cit->second.clear();
-	else if (!cit->second.replaceByIntegral())
-	  cit->second.clear();
-      }
-      else if (cit->first->doDft())
-      {
-	if (giveStatus == 1)
-	{
-	  FFaMsg::pushStatus("Doing DFT transformation");
-	  giveStatus = 2;
-	}
-#ifdef FAP_DEBUG
-        std::cout <<"FapGraphDataMap: DFT transforming "
-                  << cit->first->getIdString(true) << std::endl;
-#endif
-	if (!cit->second.replaceByDFT(cit->first->getDFTparameters(),
-				      cit->first->getUserDescription(),message))
-	  cit->second.clear(); // Don't plot curve if the DFT failed
-      }
-      else if (cit->first->doRainflow())
-      {
-	if (giveStatus == 1)
-	{
-	  FFaMsg::pushStatus("Doing rainflow analysis");
-	  giveStatus = 2;
-	}
-#ifdef FAP_DEBUG
-        std::cout <<"FapGraphDataMap: Rainflow transforming "
-                  << cit->first->getIdString(true) << std::endl;
-#endif
-	double ys = cit->first->getYScale();
-	RFprm rf(cit->first->getFatigueGateValue()/ys);
-	if (!cit->first->getFatigueEntireDomain())
-	{
-	  rf.start = cit->first->getFatigueDomain().first;
-	  rf.stop = cit->first->getFatigueDomain().second;
-	}
-
-	// Beta feature: Plotting the peak-and-valley extraction results
-	bool pvx = cit->first->getUserDescription().find("#PVX") < std::string::npos;
-	if (!cit->second.replaceByRainflow(rf,ys,pvx,
-					   cit->first->getUserDescription(),
-					   message))
-	  cit->second.clear(); // Don't plot curve if the Rainflow failed
-      }
-    }
-  if (giveStatus == 2) FFaMsg::popStatus();
+  for (FapDataMap::value_type& cp : dataMap)
+    if (cp.first->hasDFTOptionsChanged() || cp.second.hasDataChanged())
+      transformData(cp.first,cp.second);
 
   if (errMsg) return errMsg->empty(); // Error messages are returned in *errMsg
 
@@ -361,23 +387,22 @@ bool FapGraphDataMap::findPlottingData(const std::vector<FmCurveSet*>& curves,
 
 
 /*!
-  Replaces the combined curves in a vector by their respective curve components.
+  Recursive method to find the basic curve components of the combined curves.
 */
 
-void FapGraphDataMap::replaceCombinedCurves(std::vector<FmCurveSet*>& curves)
+void FapGraphDataMap::resolveCombinedCurves(std::vector<FmCurveSet*>& curves,
+                                            std::vector<FmCurveSet*>& cCurves)
 {
-  std::vector<FmCurveSet*> eCurves;
   for (size_t j = 0; j < curves.size();)
     if (curves[j]->usingInputMode() == FmCurveSet::COMB_CURVES)
     {
       std::vector<FmCurveSet*> comps;
       curves[j]->getActiveCurveComps(comps);
+      resolveCombinedCurves(comps,cCurves);
       for (FmCurveSet* comp : comps)
-        if (std::find(curves.begin(),curves.end(),comp) == curves.end())
-          if (std::find(eCurves.begin(),eCurves.end(),comp) == eCurves.end())
-            curves.push_back(comp);
+        if (std::find(cCurves.begin(),cCurves.end(),comp) == cCurves.end())
+          cCurves.push_back(comp);
 
-      eCurves.push_back(curves[j]);
       curves.erase(curves.begin()+j);
     }
     else
@@ -401,7 +426,8 @@ bool FapGraphDataMap::findDataFromFunc(const FmCurveSet* curve,
 
 #ifdef FAP_DEBUG
   std::cout <<"FapGraphDataMap: Loading curve data from Function "
-            << function->getInfoString() << std::endl;
+            << function->getInfoString()
+            <<" for "<< curve->getIdString() << std::endl;
 #endif
 
   curveData.setDataChanged();
@@ -463,7 +489,7 @@ bool FapGraphDataMap::findDataFromFile(const FmCurveSet* curve,
 
 #ifdef FAP_DEBUG
   std::cout <<"FapGraphDataMap: Loading curve data from "<< filePath
-            << std::endl;
+            <<" for "<< curve->getIdString() << std::endl;
 #endif
   return curveData.loadFileData (filePath, curve->getChannelName(), message,
 				 timeRange.first, timeRange.second);
@@ -494,9 +520,7 @@ bool FapGraphDataMap::findCombinedCurveData(const FmCurveSet* ccrv,
   static std::vector<const FmCurveSet*> cStack;
   cStack.push_back(ccrv);
 
-  std::vector<FFpCurve>  transCrv;
   std::vector<FFpCurve*> comps(active.size(),NULL);
-  transCrv.reserve(active.size());
   for (size_t i = 0; i < active.size(); i++)
     if (active[i])
     {
@@ -510,22 +534,8 @@ bool FapGraphDataMap::findCombinedCurveData(const FmCurveSet* ccrv,
           + ": " + curves[i]->getIdString(true) + " is transformed.\n";
       else if (findCombinedCurveData(curves[i],message))
       {
-        if (curves[i]->derivate() || curves[i]->integrate() ||
-            curves[i]->hasNonDefaultScaleShift())
-        {
-          // Create a local copy of this curve component and transform it first
-          transCrv.push_back(dataMap[curves[i]]);
-          transCrv.back().replaceByScaledShifted(curves[i]->getDFTparameters());
-          bool transformed = true;
-          if (curves[i]->derivate())
-            transformed = transCrv.back().replaceByDerivative();
-          else if (curves[i]->integrate())
-            transformed = transCrv.back().replaceByIntegral();
-          if (transformed)
-            comps[i] = &transCrv.back();
-        }
-        else
-          comps[i] = this->getFFpCurve(curves[i],false);
+        FapDataMap::iterator cit = compMap.find(curves[i]);
+        if (cit != compMap.end()) comps[i] = &cit->second;
       }
     }
 
@@ -556,7 +566,7 @@ FFpCurve* FapGraphDataMap::getFFpCurve(const FmCurveSet* curve,
 {
   if (!curve) return NULL;
 
-  std::map<const FmCurveSet*,FFpCurve>::iterator cit = dataMap.find(curve);
+  FapDataMap::iterator cit = dataMap.find(curve);
   if (cit == dataMap.end())
     return createIfNone ? &dataMap[curve] : NULL;
 
@@ -579,8 +589,8 @@ FFpCurve* FapGraphDataMap::getFFpCurve(const FmCurveSet* curve,
 
 bool FapGraphDataMap::hasDataChanged(const FmCurveSet* curve) const
 {
-  std::map<const FmCurveSet*,FFpCurve>::const_iterator c = dataMap.find(curve);
-  return c == dataMap.end() ? true : c->second.hasDataChanged();
+  FapDataMap::const_iterator cit = dataMap.find(curve);
+  return cit == dataMap.end() ? true : cit->second.hasDataChanged();
 }
 
 
@@ -591,11 +601,11 @@ bool FapGraphDataMap::hasDataChanged(const FmCurveSet* curve) const
 
 bool FapGraphDataMap::setDataChanged(const FmCurveSet* curve)
 {
-  std::map<const FmCurveSet*,FFpCurve>::iterator c = dataMap.find(curve);
-  if (c == dataMap.end() || c->second.hasDataChanged())
+  FapDataMap::iterator cit = dataMap.find(curve);
+  if (cit == dataMap.end() || cit->second.hasDataChanged())
     return false;
 
-  c->second.setDataChanged();
+  cit->second.setDataChanged();
   return true;
 }
 
@@ -632,23 +642,22 @@ bool FapGraphDataMap::getCurveStatistics(std::vector<FapCurveSet>& stat,
 					 bool scaledShifted, bool wholeDomain,
 					 double startT, double stopT) const
 {
-  stat.resize(dataMap.size());
+  stat.clear();
+  stat.reserve(dataMap.size());
 
   std::string msg;
-  std::vector<FapCurveSet>::iterator sit = stat.begin();
-  std::map<const FmCurveSet*,FFpCurve>::const_iterator cit;
+  FapCurveStat cs;
 
-  for (cit = dataMap.begin(); cit != dataMap.end(); ++cit, ++sit)
-    if (cit->second.getCurveStatistics(wholeDomain, startT, stopT,
-				       scaledShifted,
-				       cit->first->getDFTparameters(),
-				       sit->second.rms, sit->second.avg,
-				       sit->second.stdDev, sit->second.integral,
-				       sit->second.min, sit->second.max, msg))
-      sit->first = cit->first;
+  for (const FapDataMap::value_type& cp : dataMap)
+    if (cp.second.getCurveStatistics(wholeDomain, startT, stopT, scaledShifted,
+                                     cp.first->getDFTparameters(),
+                                     cs.rms, cs.avg, cs.stdDev,
+                                     cs.integral, cs.min, cs.max, msg))
+      stat.emplace_back(cp.first,cs);
     else
     {
-      if (!msg.empty()) FFaMsg::dialog(msg,FFaMsg::DISMISS_ERROR);
+      if (!msg.empty())
+        FFaMsg::dialog(msg,FFaMsg::DISMISS_ERROR);
       return false;
     }
 

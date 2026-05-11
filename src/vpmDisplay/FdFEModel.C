@@ -50,29 +50,29 @@ void FdFEModel::updateGroupParts(FFlGroupPartCreator* gpc)
   this->deleteVisualization(true);
   if (!gpc) return;
 
-  for (const FFlGroupPartCreator::GroupPartMap::value_type& gp : gpc->getLinkParts())
-    if (gp.second->isIndexShape && !gp.second->shapeIndexes.empty())
+  for (FFlGroupPartCreator::GroupPartMap::value_type& gp : *gpc)
+    if (!gp.second.shapeIndexes.empty())
     {
       FdFEGroupPart* fdGP = this->createGroupPart();
-      fdGP->setFaceIndexes(!gp.second->isLineShape,gp.second->shapeIndexes);
-      if (gp.second->isLineShape)
+      fdGP->setFaceIndexes(!gp.second.isLineShape,gp.second.shapeIndexes);
+      if (gp.second.isLineShape)
         fdGP->setLinePattern(0xffff);
-      gp.second->visualModel = fdGP;
+      gp.second.visualModel = fdGP;
       myGroupParts[gp.first].push_back(fdGP);
     }
-    else if (!gp.second->facePointers.empty() || !gp.second->hiddenFaces.empty() ||
-             !gp.second->edgePointers.empty() || !gp.second->hiddenEdges.empty())
+    else if (!gp.second.facePointers.empty() || !gp.second.hiddenFaces.empty() ||
+             !gp.second.edgePointers.empty() || !gp.second.hiddenEdges.empty())
     {
       FdFEGroupPart* fdGP = this->createGroupPart();
-      fdGP->setGroupPartData(gp.second);
+      fdGP->setGroupPartData(&gp.second);
       myGroupParts[gp.first].push_back(fdGP);
     }
 
-  for (const FFlGroupPartCreator::GroupPartMap::value_type& gp : gpc->getSpecialLines())
-    if (!gp.second->edgePointers.empty())
+  for (FFlGroupPartCreator::GroupPartMap::value_type& gp : gpc->getSpecialLines())
+    if (!gp.second.edgePointers.empty())
     {
       FdFEGroupPart* fdGP = this->createGroupPart();
-      fdGP->setGroupPartData(gp.second,gp.first);
+      fdGP->setGroupPartData(&gp.second,gp.first);
       myGroupParts[FFlGroupPartCreator::SPECIAL_LINES].push_back(fdGP);
     }
 
@@ -86,7 +86,7 @@ void FdFEModel::addGroupPart(FdFEGroupPartSet::GroupPartType type,
   if (!groupPartData)
     return;
 
-  if (groupPartData->isIndexShape && !groupPartData->shapeIndexes.empty())
+  if (!groupPartData->shapeIndexes.empty())
   {
     FdFEGroupPart* newFdGP = this->createGroupPart();
     newFdGP->setFaceIndexes(!groupPartData->isLineShape,

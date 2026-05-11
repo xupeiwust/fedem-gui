@@ -210,7 +210,6 @@ void FapMech3DObjCmds::init()
   cmdItem->setText("Item Appearance...");
   cmdItem->setToolTip("Item Appearance");
   cmdItem->setActivatedCB(FFaDynCB0S([](){ FuiModes::setMode(FuiModes::APPEARANCE_MODE); }));
-  cmdItem->setGetSensitivityCB(FFaDynCB1S(FapCmdsBase::alwaysSensitive,bool&));
 }
 //----------------------------------------------------------------------------
 
